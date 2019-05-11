@@ -42,6 +42,8 @@ private slots:
     void chaosPressed();
     void renderPressed();
     
+    void reloadFilePressed();
+    
     
 protected:
     

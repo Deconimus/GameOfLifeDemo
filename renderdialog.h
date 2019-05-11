@@ -2,7 +2,7 @@
 #define RENDERDIALOG_H
 
 
-#include "ui_renderdialog.h";
+#include "ui_renderdialog.h"
 
 #include <QObject>
 #include <QDialog>
@@ -17,7 +17,8 @@ class RenderDialog : public QDialog
     
 public:
     
-    RenderDialog(GOLScene* scene, QWidget* parent = NULL);
+    RenderDialog(GOLScene* scene, const QString& lastDir, 
+                 const QString& lastFile, QWidget* parent = NULL);
     virtual ~RenderDialog();
     
     
@@ -29,6 +30,12 @@ private slots:
     void cellColorPickPressed();
     void bgColorPickPressed();
     
+    void cellColorChanged(const QString& hex);
+    void bgColorChanged(const QString& hex);
+    
+    void xChanged(int x);
+    void yChanged(int y);
+    
     
 private:
     
@@ -38,11 +45,27 @@ private:
     
     GOLScene* m_scene;
     
+    QString m_htmlTemplate;
+    
+    
     // Methods:
     
-    void showWarningDialog(const QString& warning);
+    bool renderToHTML(const QString& filepath,
+                      const bool* cells, const int cols, const int rows, 
+                      const int x, const int y, const int width, const int height, 
+                      const int cellSize, const QColor& cellColor,
+                      const QColor& bgColor, const bool showGrid);
     
+    bool renderToSVG(const QString& filepath,
+                     const bool* cells, const int cols, const int rows,
+                     const int x, const int y, const int width, const int height,
+                     const int cellSize, const QColor& cellColor,
+                     const QColor& bgColor, const bool showGrid);
+    
+    void showWarningDialog(const QString& warning);
     bool validFileName(const QString& str);
+    
+    void loadHTMLTemplate(const QString& filepath);
     
 };
 

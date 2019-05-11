@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>266</height>
+    <height>311</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,6 +16,25 @@
   <layout class="QGridLayout" name="gridLayout">
    <item row="5" column="1">
     <layout class="QHBoxLayout" name="horizontalLayout_5">
+     <item>
+      <widget class="QLabel" name="CellColorLabel">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
      <item>
       <widget class="QLineEdit" name="CellColorEdit"/>
      </item>
@@ -28,8 +47,34 @@
      </item>
     </layout>
    </item>
+   <item row="0" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Directory:</string>
+     </property>
+    </widget>
+   </item>
    <item row="6" column="1">
     <layout class="QHBoxLayout" name="horizontalLayout_6">
+     <item>
+      <widget class="QLabel" name="BGColorLabel">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>20</width>
+         <height>20</height>
+        </size>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
      <item>
       <widget class="QLineEdit" name="BGColorEdit"/>
      </item>
@@ -42,14 +87,14 @@
      </item>
     </layout>
    </item>
-   <item row="7" column="0">
+   <item row="8" column="0">
     <widget class="QLabel" name="label_5">
      <property name="text">
       <string>Show Grid:</string>
      </property>
     </widget>
    </item>
-   <item row="7" column="1">
+   <item row="8" column="1">
     <widget class="QCheckBox" name="ShowGridBox">
      <property name="text">
       <string/>
@@ -66,10 +111,10 @@
      </property>
     </widget>
    </item>
-   <item row="0" column="0">
-    <widget class="QLabel" name="label">
+   <item row="2" column="0">
+    <widget class="QLabel" name="label_4">
      <property name="text">
-      <string>Directory:</string>
+      <string>CellSize:</string>
      </property>
     </widget>
    </item>
@@ -77,13 +122,6 @@
     <widget class="QLabel" name="label_7">
      <property name="text">
       <string>Bg Color:</string>
-     </property>
-    </widget>
-   </item>
-   <item row="2" column="0">
-    <widget class="QLabel" name="label_4">
-     <property name="text">
-      <string>CellSize:</string>
      </property>
     </widget>
    </item>
@@ -101,7 +139,25 @@
      </property>
     </widget>
    </item>
-   <item row="8" column="0" colspan="2">
+   <item row="0" column="1">
+    <layout class="QHBoxLayout" name="horizontalLayout_2">
+     <item>
+      <widget class="QLineEdit" name="DirectoryLine">
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="DirButton">
+       <property name="text">
+        <string>..</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="9" column="0" colspan="2">
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <spacer name="horizontalSpacer">
@@ -127,24 +183,6 @@
    </item>
    <item row="1" column="1">
     <widget class="QLineEdit" name="PrefixEdit"/>
-   </item>
-   <item row="0" column="1">
-    <layout class="QHBoxLayout" name="horizontalLayout_2">
-     <item>
-      <widget class="QLineEdit" name="DirectoryLine">
-       <property name="readOnly">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="DirButton">
-       <property name="text">
-        <string>..</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
    </item>
    <item row="2" column="1">
     <layout class="QHBoxLayout" name="hboxlayout300">
@@ -241,6 +279,16 @@
       <number>9999</number>
      </property>
     </widget>
+   </item>
+   <item row="7" column="0">
+    <widget class="QLabel" name="label_13">
+     <property name="text">
+      <string>Format:</string>
+     </property>
+    </widget>
+   </item>
+   <item row="7" column="1">
+    <widget class="QComboBox" name="FormatCombo"/>
    </item>
   </layout>
  </widget>

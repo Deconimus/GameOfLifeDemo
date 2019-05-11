@@ -182,7 +182,6 @@ void GOLScene::drawBackground(QPainter* painter, const QRectF& rect)
     {
         std::lock_guard<std::mutex> guard(m_cellsMutex);
         
-        #pragma omp parallel for num_threads(NUM_THREADS)
         for (int i = startRow; i <= endRow; ++i)
         {
             for (int j = startCol; j <= endCol; ++j)
@@ -203,13 +202,13 @@ void GOLScene::drawBackground(QPainter* painter, const QRectF& rect)
     
     painter->setPen(QPen(Qt::darkGray));
     
-    for (int i = 0; i < m_cols+1; ++i)
+    for (int i = startCol; i <= endCol+1; ++i)
     {
         qreal x = i * m_cellSize + startX;
         painter->drawLine(x, startY, x, startY + m_rows * m_cellSize);
     }
     
-    for (int i = 0; i < m_rows+1; ++i)
+    for (int i = startRow; i <= endRow+1; ++i)
     {
         qreal y = i * m_cellSize + startY;
         painter->drawLine(startX, y, startX + m_cols * m_cellSize, y);
@@ -284,6 +283,8 @@ void GOLScene::load(const QString& path)
         
         emit rowsSignal(m_rows);
         emit colsSignal(m_cols);
+        
+        update();
         
         file.close();
     }
@@ -374,4 +375,31 @@ QPoint GOLScene::sceneToCellCoords(const QPointF& scenepos)
 bool GOLScene::inGrid(const QPoint& cell)
 {
     return !(cell.x() < 0 || cell.x() >= m_cols || cell.y() < 0 || cell.y() >= m_rows);
+}
+
+
+bool* GOLScene::copyCells()
+{
+    std::lock_guard<std::mutex> guard(m_cellsMutex);
+    
+    bool* ncells = new bool[m_cols * m_rows];
+    std::memcpy(ncells, m_cells, sizeof(bool) * m_cols * m_rows);
+    return ncells;
+}
+
+void GOLScene::setCells(bool* cells, int cols, int rows)
+{
+    std::lock_guard<std::mutex> guard(m_cellsMutex);
+    
+    delete[] m_cells;
+    m_cells = cells;
+    
+    if (cols != m_cols || rows != m_rows)
+    {
+        delete[] m_buffer;
+        m_buffer = new bool[cols * rows];
+        
+        m_cols = cols;
+        m_rows = rows;
+    }
 }

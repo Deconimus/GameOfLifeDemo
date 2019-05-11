@@ -1,6 +1,8 @@
 #ifndef GOLSCENE_H
 #define GOLSCENE_H
 
+#pragma GCC diagnostic ignored "-Wreorder"
+
 
 #define GRID_WIDTH  36
 #define GRID_HEIGHT 20
@@ -51,11 +53,21 @@ public:
     void save(const QString& path);
     void load(const QString& path);
     
+    int rows() { return m_rows; }
     void setRows(int rows) { setSize(m_cols, rows); }
+    int columns() { return m_cols; }
     void setColumns(int cols) { setSize(cols, m_rows); }
     void setSize(int cols, int rows);
     
     void chaos();
+    
+    
+    bool* copyCells();
+    void setCells(bool* cells, int cols, int rows); // takes ownership of the pointer
+    
+    std::mutex& _cellsMutex() { return m_cellsMutex; }
+    const bool* cells() { return m_cells; }
+    
     
     
 protected:

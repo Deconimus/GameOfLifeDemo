@@ -161,12 +161,25 @@ void MainWindow::savePressed()
     }
 }
 
+void MainWindow::reloadFilePressed()
+{
+    QFile file(m_lastDir+"/"+m_lastFile);
+    if (file.exists())
+    {
+        m_scene->load(m_lastDir+"/"+m_lastFile);
+    }
+}
+
 
 void MainWindow::cellSizeChanged(int size)
 {
     size = std::max(size, 1);
     m_scene->setCellSize(size);
     m_scene->update();
+    
+    bool prev = ui.CellSizeSpin->blockSignals(true);
+    ui.CellSizeSpin->setValue(size);
+    ui.CellSizeSpin->blockSignals(prev);
 }
 
 void MainWindow::cellSizeInc()
@@ -228,7 +241,7 @@ void MainWindow::renderPressed()
     bool prev = m_scene->paused();
     setPaused(true);
     
-    RenderDialog diag(m_scene, this);
+    RenderDialog diag(m_scene, m_lastDir, m_lastFile, this);
     diag.exec();
     
     setPaused(prev);
@@ -247,8 +260,8 @@ void MainWindow::loadConfig()
         
         if (obj.find("lastdir") != obj.end() && !obj["lastdir"].toString().isEmpty())
             m_lastDir = obj["lastdir"].toString();
-        if (obj.find("lastfile") != obj.end() && !obj["lastfile"].toString().isEmpty())
-            m_lastFile = obj["lastfile"].toString();
+        //if (obj.find("lastfile") != obj.end() && !obj["lastfile"].toString().isEmpty())
+            //m_lastFile = obj["lastfile"].toString();
         if (obj.find("cellsize") != obj.end() && obj["cellsize"].toInt() > 0)
             ui.CellSizeSpin->setValue(obj["cellsize"].toInt());
     }
@@ -258,7 +271,7 @@ void MainWindow::saveConfig()
 {
     QJsonObject baseObj;
     baseObj["lastdir"] = QJsonValue(m_lastDir);
-    baseObj["lastfile"] = QJsonValue(m_lastFile);
+    //baseObj["lastfile"] = QJsonValue(m_lastFile);
     baseObj["cellsize"] = QJsonValue(ui.CellSizeSpin->value());
     
     QJsonDocument doc(baseObj);
@@ -313,4 +326,9 @@ void MainWindow::addShortcuts()
     dash->setShortcut(QKeySequence(Qt::Key_Minus));
     connect(dash, SIGNAL(triggered(bool)), this, SLOT(cellSizeDec()));
     addAction(dash);
+    
+    QAction* reload = new QAction(this);
+    reload->setShortcut(QKeySequence("Ctrl+L"));
+    connect(reload, SIGNAL(triggered(bool)), this, SLOT(reloadFilePressed()));
+    addAction(reload);
 }
