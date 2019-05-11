@@ -44,6 +44,13 @@
        </widget>
       </item>
       <item>
+       <widget class="QPushButton" name="RenderButton">
+        <property name="text">
+         <string>Render</string>
+        </property>
+       </widget>
+      </item>
+      <item>
        <widget class="QPushButton" name="ResetButton">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">

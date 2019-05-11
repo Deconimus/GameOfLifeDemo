@@ -25,18 +25,23 @@ DEFINES += QT_DEPRECATED_WARNINGS
 QMAKE_CXXFLAGS += -fopenmp
 QMAKE_LFLAGS += -fopenmp
 
+QMAKE_LFLAGS_WINDOWS += -Wl,--stack,32000000
+
 OMP_NUM_THREADS = 4
 
 SOURCES += \
         main.cpp \
         mainwindow.cpp \
         golscene.cpp \
-    golthread.cpp
+    golthread.cpp \
+    renderdialog.cpp
 
 HEADERS += \
         mainwindow.h \
         golscene.h \
-    golthread.h
+    golthread.h \
+    renderdialog.h
 
 FORMS += \
-        mainwindow.ui
+        mainwindow.ui \
+    renderdialog.ui

@@ -1,14 +1,12 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include "ui_mainwindow.h"
+
 #include <QMainWindow>
 
 class GOLScene;
 class QWheelEvent;
-
-namespace Ui {
-class MainWindow;
-}
 
 class MainWindow : public QMainWindow
 {
@@ -42,6 +40,7 @@ private slots:
     void loadPressed();
     void resetPressed();
     void chaosPressed();
+    void renderPressed();
     
     
 protected:
@@ -55,11 +54,21 @@ private slots:
     
 private:
     
-    Ui::MainWindow *ui;
+    // Attributes:
+    
+    Ui::MainWindow ui;
     
     GOLScene* m_scene;
     
-    QString m_lastDir;
+    QString m_lastDir, m_lastFile;
+    
+    
+    // Methods:
+    
+    void loadConfig();
+    void saveConfig();
+    
+    void addShortcuts();
     
 };
 

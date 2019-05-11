@@ -5,7 +5,10 @@
 #include <QFileInfo>
 #include <QFile>
 #include <QDataStream>
+#include <QGraphicsView>
+
 #include <omp.h>
+#include <assert.h>
 
 #include <cstring>
 #include <random>
@@ -48,7 +51,7 @@ void GOLScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
 {
     QPoint cell = sceneToCellCoords(event->scenePos());
     
-    if (cell.x() < 0 || cell.x() >= m_cols || cell.y() < 0 || cell.y() >= m_rows)
+    if (!inGrid(cell))
     {
         m_drawing = false;
     }
@@ -74,12 +77,7 @@ void GOLScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 {
     QPoint cell = sceneToCellCoords(event->scenePos());
     
-    if ()
-    {
-        return;
-    }
-    
-    if (m_drawing && m_lastDrawCell != cell)
+    if (m_drawing && m_lastDrawCell != cell && inGrid(cell))
     {
         std::lock_guard<std::mutex> guard(m_cellsMutex);
         
@@ -94,7 +92,7 @@ void GOLScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
 
 void GOLScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* event)
 {
-    QPoint cell = sceneToCellCoords(event->scenePos());
+    //QPoint cell = sceneToCellCoords(event->scenePos());
     
     m_drawing = false;
     
@@ -148,11 +146,34 @@ void GOLScene::tick()
 
 void GOLScene::drawBackground(QPainter* painter, const QRectF& rect)
 {
+    assert(views().size() > 0);
+    
     qreal width = m_cols * m_cellSize;
     qreal height = m_rows * m_cellSize;
     
     qreal startX = -width / 2.0;
     qreal startY = -height / 2.0;
+    
+    QGraphicsView* view = views()[0];
+    QRectF visible = view->mapToScene(view->viewport()->geometry()).boundingRect();
+    
+    int startRow = 0, endRow = m_rows-1, startCol = 0, endCol = m_cols-1;
+    
+    if (width > visible.width())
+    {
+        int w = (int)std::ceil(visible.width() / m_cellSize);
+        startCol = (int)std::floor((m_cols - w) / 2.0);
+        endCol = startCol + w + 1;
+    }
+    if (height > visible.height())
+    {
+        int h = (int)std::ceil(visible.height() / m_cellSize);
+        startRow = (int)std::floor((m_rows - h) / 2.0);
+        endRow = startRow + h + 1;
+    }
+    
+    //printf("%d - %d; %d - %d\n", startCol, endCol, startRow, endRow);
+    //fflush(stdout);
     
     painter->setPen(QPen(QColor(255, 165, 0)));
     
@@ -162,16 +183,17 @@ void GOLScene::drawBackground(QPainter* painter, const QRectF& rect)
         std::lock_guard<std::mutex> guard(m_cellsMutex);
         
         #pragma omp parallel for num_threads(NUM_THREADS)
-        for (int i = 0; i < m_rows; ++i)
+        for (int i = startRow; i <= endRow; ++i)
         {
-            for (int j = 0; j < m_cols; ++j)
+            for (int j = startCol; j <= endCol; ++j)
             {
                 if (m_cells[i * m_cols + j])
                 {
                     ++cellCounter;
                     
-                    painter->fillRect(QRectF(startX + j * m_cellSize, startY + i * m_cellSize,
-                                             m_cellSize, m_cellSize), QBrush(QColor(255, 165, 0)));
+                    painter->fillRect(QRectF(startX + j * m_cellSize, 
+                                      startY + i * m_cellSize, m_cellSize, m_cellSize), 
+                                      QBrush(QColor(255, 165, 0)));
                 }
             }
         }
@@ -351,5 +373,5 @@ QPoint GOLScene::sceneToCellCoords(const QPointF& scenepos)
 
 bool GOLScene::inGrid(const QPoint& cell)
 {
-    return cell.x() < 0 || cell.x() >= m_cols || cell.y() < 0 || cell.y() >= m_rows;
+    return !(cell.x() < 0 || cell.x() >= m_cols || cell.y() < 0 || cell.y() >= m_rows);
 }
