@@ -13,7 +13,6 @@
 
 #include <QObject>
 #include <QGraphicsScene>
-#include <QGraphicsSceneMouseEvent>
 
 #include <vector>
 #include <memory>
@@ -23,6 +22,8 @@
 
 
 class GOLThread;
+class QHoverEvent;
+class QGraphicsMouseEvent;
 
 
 class GOLScene : public QGraphicsScene
@@ -92,6 +93,7 @@ signals:
     void pauseSignal(bool paused);
     void rowsSignal(int rows);
     void colsSignal(int cols);
+    void cursorSignal(int col, int row);
     
     
 private:
@@ -110,7 +112,7 @@ private:
     std::atomic_bool m_paused;
     std::atomic_int m_fps;
     
-    unsigned long m_tickCount;
+    unsigned long m_tickCount, m_cellCounter;
     
     std::mutex m_cellsMutex;
     
@@ -118,7 +120,7 @@ private:
     
     
     bool m_drawing, m_drawKill;
-    QPoint m_lastDrawCell;
+    QPoint m_lastDrawCell, m_lastHoverCursor;
     
     
 };

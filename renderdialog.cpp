@@ -9,6 +9,7 @@
 #include <QThread>
 #include <QSvgGenerator>
 #include <QPainter>
+#include <QFileDialog>
 
 
 #include <string>
@@ -22,6 +23,7 @@ RenderDialog::RenderDialog(GOLScene* scene, const QString& lastDir,
                            const QString& lastFile, QWidget* parent)
   : QDialog(parent)
   , m_scene(scene)
+  , m_lastDir(lastDir)
 {
     ui.setupUi(this);
     
@@ -144,20 +146,24 @@ void RenderDialog::renderPressed()
             QThread::msleep(50);
         }
         
+        bool* cells = renderScene->copyCells();
+        
         if (format == "html")
         {
-            success &= renderToHTML(filepath, renderScene->copyCells(), 
+            success &= renderToHTML(filepath, cells, 
                                     renderScene->columns(), renderScene->rows(),
                                     x, y, width, height, cellSize,
                                     cellColor, bgColor, showGrid);
         }
         else if (format == "svg")
         {
-            success &= renderToSVG(filepath, renderScene->copyCells(), 
+            success &= renderToSVG(filepath, cells, 
                                    renderScene->columns(), renderScene->rows(),
                                    x, y, width, height, cellSize,
                                    cellColor, bgColor, showGrid);
         }
+        
+        delete[] cells;
         
         if (!success)
         {
@@ -184,7 +190,20 @@ void RenderDialog::renderPressed()
 
 void RenderDialog::dirPressed()
 {
+    QString dirpath = QFileDialog::getExistingDirectory(this, "Choose folder for frames",
+                                                        m_lastDir);
     
+    if (dirpath.isEmpty())
+        return;
+    
+    QDir dir(dirpath);
+    m_lastDir = dir.absolutePath();
+    
+    ui.DirectoryLine->setText(dir.absolutePath());
+    
+    if (ui.PrefixEdit->text() == "NewState_frame_")
+        ui.PrefixEdit->setText(m_lastDir.right(m_lastDir.size() - m_lastDir.lastIndexOf("/")-1)
+                               + "_frame_");
 }
 
 void RenderDialog::cellColorPickPressed()
@@ -326,10 +345,13 @@ bool RenderDialog::renderToSVG(const QString& filepath,
             QPen pen(Qt::black, 1);
             painter.setPen(pen);
             
-            for (int i = 0; i < width+1; ++i)
+            for (int i = 0; i < width; ++i)
                 painter.drawLine(i * cellSize, 0, i * cellSize, height * cellSize);
-            for (int i = 0; i < height+1; ++i)
+            painter.drawLine(width * cellSize - 1, 0, width * cellSize - 1, height * cellSize);
+            
+            for (int i = 0; i < height; ++i)
                 painter.drawLine(0, i * cellSize, width * cellSize, i * cellSize);
+            painter.drawLine(0, height * cellSize, width * cellSize, height * cellSize);
         }
         
         painter.end();

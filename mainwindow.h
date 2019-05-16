@@ -21,6 +21,8 @@ public slots:
     void aliveCells(int count);
     void tickCount(int count);
     
+    void cursorCoordsChanged(int col, int row);
+    
     void rowsChanged(int rows);
     void colsChanged(int cols);
     

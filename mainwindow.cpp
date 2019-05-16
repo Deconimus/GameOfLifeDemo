@@ -41,11 +41,15 @@ MainWindow::MainWindow(QWidget *parent)
     m_scene = new GOLScene();
     m_scene->setCellSize(ui.CellSizeSpin->value());
     
+    ui.graphicsView->setMouseTracking(true);
+    ui.graphicsView->setScene(m_scene);
+    
     connect(m_scene, SIGNAL(aliveCellsSignal(int)), this, SLOT(aliveCells(int)));
     connect(m_scene, SIGNAL(tickCountSignal(int)), this, SLOT(tickCount(int)));
     connect(m_scene, SIGNAL(pauseSignal(bool)), this, SLOT(setPaused(bool)));
     connect(m_scene, SIGNAL(colsSignal(int)), this, SLOT(sceneSetCols(int)));
     connect(m_scene, SIGNAL(rowsSignal(int)), this, SLOT(sceneSetRows(int)));
+    connect(m_scene, SIGNAL(cursorSignal(int,int)), this, SLOT(cursorCoordsChanged(int, int)));
     
     connect(ui.PauseButton, SIGNAL(pressed()), this, SLOT(pausePressed()));
     connect(ui.NextTickButton, SIGNAL(pressed()), this, SLOT(nextTickPressed()));
@@ -64,11 +68,10 @@ MainWindow::MainWindow(QWidget *parent)
     addShortcuts();
     
     
+    aliveCells(0);
+    
     if (m_scene->paused())
         setWindowTitle(QString(WINDOW_TITLE) + " (Paused)");
-    
-    ui.graphicsView->setScene(m_scene);
-    //ui.graphicsView->setSceneRect(QRectF());
 }
 
 MainWindow::~MainWindow()
@@ -79,7 +82,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::aliveCells(int count)
 {
-    ui.AliveCellsLabel->setText(QString("Alive Cells: %1").arg(count));
+    ui.AliveCellsLabel->setText(QString("Living Cells: %1").arg(count));
 }
 
 void MainWindow::tickCount(int count)
@@ -245,6 +248,14 @@ void MainWindow::renderPressed()
     diag.exec();
     
     setPaused(prev);
+}
+
+void MainWindow::cursorCoordsChanged(int col, int row)
+{
+    if (col < 0 || row < 0)
+        ui.CursorLabel->setText("");
+    else
+        ui.CursorLabel->setText(QString("%1, %2").arg(col).arg(row));
 }
 
 

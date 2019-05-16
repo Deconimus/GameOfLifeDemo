@@ -45,7 +45,7 @@ private:
     
     GOLScene* m_scene;
     
-    QString m_htmlTemplate;
+    QString m_lastDir, m_htmlTemplate;
     
     
     // Methods:

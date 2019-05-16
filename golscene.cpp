@@ -6,6 +6,8 @@
 #include <QFile>
 #include <QDataStream>
 #include <QGraphicsView>
+#include <QGraphicsSceneMouseEvent>
+#include <QHoverEvent>
 
 #include <omp.h>
 #include <assert.h>
@@ -66,6 +68,11 @@ void GOLScene::mousePressEvent(QGraphicsSceneMouseEvent* event)
             m_drawKill = m_cells[cell.y() * m_cols + cell.x()];
             m_cells[cell.y() * m_cols + cell.x()] = !m_drawKill;
             
+            if (m_drawKill)
+                --m_cellCounter;
+            else
+                ++m_cellCounter;
+            
             update();
         }
     }
@@ -81,10 +88,28 @@ void GOLScene::mouseMoveEvent(QGraphicsSceneMouseEvent* event)
     {
         std::lock_guard<std::mutex> guard(m_cellsMutex);
         
+        bool alive = m_cells[cell.y() * m_cols + cell.x()];
         m_cells[cell.y() * m_cols + cell.x()] = !m_drawKill;
         m_lastDrawCell = cell;
         
+        if (alive && m_drawKill)
+            --m_cellCounter;
+        else if (!alive && !m_drawKill)
+            ++m_cellCounter;
+        
         update();
+    }
+    else
+    {
+        if (cell != m_lastHoverCursor)
+        {
+            if (inGrid(cell))
+                emit cursorSignal(cell.x(), cell.y());
+            else
+                emit cursorSignal(-1, -1);
+            
+            m_lastHoverCursor = cell;
+        }
     }
     
     QGraphicsScene::mouseMoveEvent(event);
@@ -107,7 +132,10 @@ void GOLScene::tick()
     int aliveNeighbours;
     bool alive;
     
-    #pragma omp parallel for num_threads(NUM_THREADS) private(alive, aliveNeighbours)
+    int counter = 0;
+    
+    #pragma omp parallel for num_threads(NUM_THREADS) \
+            private(alive, aliveNeighbours) reduction(+:counter)
     for (int y = 0; y < m_rows; ++y)
     {
         for (int x = 0; x < m_cols; ++x)
@@ -125,13 +153,14 @@ void GOLScene::tick()
             
             alive = m_cells[y * m_cols + x];
             
-            if ((alive && (aliveNeighbours == 2 || aliveNeighbours == 3)) || 
-                (!alive && aliveNeighbours == 3))
-                m_buffer[y * m_cols + x] = true;
-            else
-                m_buffer[y * m_cols + x] = false;
+            if (alive)
+                ++counter;
+            
+            m_buffer[y * m_cols + x] = aliveNeighbours == 3 || (alive && aliveNeighbours == 2);
         }
     }
+    
+    m_cellCounter = counter;
     
     bool* tmp = m_cells;
     m_cells = m_buffer;
@@ -177,8 +206,6 @@ void GOLScene::drawBackground(QPainter* painter, const QRectF& rect)
     
     painter->setPen(QPen(QColor(255, 165, 0)));
     
-    int cellCounter = 0;
-    
     {
         std::lock_guard<std::mutex> guard(m_cellsMutex);
         
@@ -188,8 +215,6 @@ void GOLScene::drawBackground(QPainter* painter, const QRectF& rect)
             {
                 if (m_cells[i * m_cols + j])
                 {
-                    ++cellCounter;
-                    
                     painter->fillRect(QRectF(startX + j * m_cellSize, 
                                       startY + i * m_cellSize, m_cellSize, m_cellSize), 
                                       QBrush(QColor(255, 165, 0)));
@@ -198,20 +223,27 @@ void GOLScene::drawBackground(QPainter* painter, const QRectF& rect)
         }
     }
     
-    emit aliveCellsSignal(cellCounter);
+    emit aliveCellsSignal((int)m_cellCounter);
     
     painter->setPen(QPen(Qt::darkGray));
     
-    for (int i = startCol; i <= endCol+1; ++i)
+    if (m_cellSize > 4)
     {
-        qreal x = i * m_cellSize + startX;
-        painter->drawLine(x, startY, x, startY + m_rows * m_cellSize);
+        for (int i = startCol; i <= endCol+1; ++i)
+        {
+            qreal x = i * m_cellSize + startX;
+            painter->drawLine(x, startY, x, startY + m_rows * m_cellSize);
+        }
+        
+        for (int i = startRow; i <= endRow+1; ++i)
+        {
+            qreal y = i * m_cellSize + startY;
+            painter->drawLine(startX, y, startX + m_cols * m_cellSize, y);
+        }
     }
-    
-    for (int i = startRow; i <= endRow+1; ++i)
+    else
     {
-        qreal y = i * m_cellSize + startY;
-        painter->drawLine(startX, y, startX + m_cols * m_cellSize, y);
+        painter->drawRect(startX, startY, m_cols * m_cellSize, m_rows * m_cellSize);
     }
 }
 
@@ -222,6 +254,7 @@ void GOLScene::reset()
     
     std::memset(m_cells, false, sizeof(bool) * m_rows * m_cols);
     m_tickCount = 0;
+    m_cellCounter = 0;
     
     emit aliveCellsSignal(0);
     emit tickCountSignal(0);
@@ -278,6 +311,8 @@ void GOLScene::load(const QString& path)
         
         m_tickCount = 0;
         emit tickCountSignal(0);
+        emit aliveCellsSignal(0);
+        m_cellCounter = 0;
         
         emit pauseSignal(true);
         
