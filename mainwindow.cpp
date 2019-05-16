@@ -124,8 +124,11 @@ void MainWindow::resetPressed()
 
 void MainWindow::loadPressed()
 {
+    QString supported = "Supported (*.gol *.rle)";
+    
     QString fileName = QFileDialog::getOpenFileName(this, "Load State", 
-                           m_lastDir, "Save-File (*.gol)");
+                           m_lastDir, QString("Save-File (*.gol);;Run Length Encoded (*.rle)")
+                           + ";;" + supported, &supported);
     
     if (!fileName.isEmpty())
     {

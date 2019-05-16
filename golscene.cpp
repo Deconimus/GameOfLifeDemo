@@ -5,6 +5,7 @@
 #include <QFileInfo>
 #include <QFile>
 #include <QDataStream>
+#include <QTextStream>
 #include <QGraphicsView>
 #include <QGraphicsSceneMouseEvent>
 #include <QHoverEvent>
@@ -285,15 +286,8 @@ void GOLScene::load(const QString& path)
 {
     std::lock_guard<std::mutex> guard(m_cellsMutex);
     
-    QFile file(path);
-    if (file.open(QFile::ReadOnly))
+    auto resize = [this](int cols, int rows)
     {
-        QByteArray data = file.readAll();
-        QDataStream in(&data, QIODevice::ReadOnly);
-        
-        int cols, rows;
-        in >> rows >> cols;
-        
         if (cols != m_cols || rows != m_rows)
         {
             delete[] m_cells;
@@ -304,10 +298,109 @@ void GOLScene::load(const QString& path)
             
             m_rows = rows;
             m_cols = cols;
+        }  
+    };
+    
+    QFile file(path);
+    if (file.open(QFile::ReadOnly))
+    {
+        if (path.toLower().endsWith(".gol"))
+        {
+            QByteArray data = file.readAll();
+            QDataStream in(&data, QIODevice::ReadOnly);
+            
+            int cols, rows;
+            in >> rows >> cols;
+            
+            resize(cols, rows);
+            
+            for (int i = 0; i < cols * rows; ++i)
+                in >> m_cells[i];
         }
-        
-        for (int i = 0; i < cols * rows; ++i)
-            in >> m_cells[i];
+        else if (path.toLower().endsWith(".rle"))
+        {
+            QByteArray data = file.readAll();
+            QTextStream in(&data, QIODevice::ReadOnly);
+            
+            bool header = false;
+            int x = 0, y = 0, count = 1;
+            QString countStr = "";
+            bool endMarker = false;
+            
+            while (!in.atEnd() && !endMarker)
+            {
+                QString line = in.readLine().trimmed();
+                if (line.isEmpty() || line.startsWith('#')) { continue; }
+                
+                if (!header && line.startsWith("x"))
+                {
+                    QString str = line.left(line.indexOf(","));
+                    int cols = str.right(str.size() - str.indexOf("=") - 1).trimmed().toInt();
+                    str = line.right(line.size() - str.size() - 1);
+                    str = str.left(str.indexOf(","));
+                    int rows = str.right(str.size() - str.indexOf("=") - 1).trimmed().toInt();
+                    header = true;
+                    
+                    resize(cols, rows);
+                }
+                else
+                {
+                    for (int i = 0; i < line.size(); ++i)
+                    {
+                        QChar c = line[i];
+                        
+                        if (c == 'b' || c == 'o' || c == '$')
+                        {
+                            if (!countStr.isEmpty())
+                            {
+                                count = countStr.toInt();
+                                countStr = "";
+                            }
+                            for (int j = 0; j < count; ++j)
+                            {
+                                if (c == '$')
+                                {
+                                    for (; x < m_cols; ++x)
+                                        m_cells[y * m_cols + x] = false;
+                                    x = 0;
+                                    ++y;
+                                    if (y >= m_rows)
+                                    {
+                                        i = line.size();
+                                        endMarker = true;
+                                    }
+                                }
+                                else
+                                {
+                                    m_cells[y * m_cols + x] = (c == 'o');
+                                    ++x;
+                                    if (x >= m_cols)
+                                    {
+                                        ++y;
+                                        x = 0;
+                                    }
+                                    if (y >= m_rows)
+                                    {
+                                        i = line.size();
+                                        endMarker = true;
+                                    }
+                                }
+                            }
+                            count = 1;
+                        }
+                        else if (c.isDigit())
+                        {
+                            countStr += c;
+                        }
+                        else if (c == '!')
+                        {
+                            endMarker = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
         
         m_tickCount = 0;
         emit tickCountSignal(0);
