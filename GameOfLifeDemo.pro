@@ -35,14 +35,17 @@ SOURCES += \
         mainwindow.cpp \
         golscene.cpp \
     golthread.cpp \
-    renderdialog.cpp
+    renderdialog.cpp \
+    insertdialog.cpp
 
 HEADERS += \
         mainwindow.h \
         golscene.h \
     golthread.h \
-    renderdialog.h
+    renderdialog.h \
+    insertdialog.h
 
 FORMS += \
         mainwindow.ui \
-    renderdialog.ui
+    renderdialog.ui \
+    insertdialog.ui

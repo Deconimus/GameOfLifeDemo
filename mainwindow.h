@@ -40,6 +40,7 @@ private slots:
     void nextTickPressed();
     void savePressed();
     void loadPressed();
+    void insertPressed();
     void resetPressed();
     void chaosPressed();
     void renderPressed();
@@ -73,6 +74,8 @@ private:
     void saveConfig();
     
     void addShortcuts();
+    
+    QString openFile();
     
 };
 

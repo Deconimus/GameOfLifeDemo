@@ -12,7 +12,7 @@
 
 #include <omp.h>
 #include <assert.h>
-
+#include <memory>
 #include <cstring>
 #include <random>
 #include <time.h>
@@ -228,7 +228,7 @@ void GOLScene::drawBackground(QPainter* painter, const QRectF& rect)
     
     painter->setPen(QPen(Qt::darkGray));
     
-    if (m_cellSize > 4)
+    if (m_cellSize > 7)
     {
         for (int i = startCol; i <= endCol+1; ++i)
         {
@@ -284,9 +284,12 @@ void GOLScene::save(const QString& path)
 
 void GOLScene::load(const QString& path)
 {
+    int cols, rows;
+    bool* cells = loadFile(path, cols, rows);
+    
     std::lock_guard<std::mutex> guard(m_cellsMutex);
     
-    auto resize = [this](int cols, int rows)
+    if (cells)
     {
         if (cols != m_cols || rows != m_rows)
         {
@@ -298,109 +301,9 @@ void GOLScene::load(const QString& path)
             
             m_rows = rows;
             m_cols = cols;
-        }  
-    };
-    
-    QFile file(path);
-    if (file.open(QFile::ReadOnly))
-    {
-        if (path.toLower().endsWith(".gol"))
-        {
-            QByteArray data = file.readAll();
-            QDataStream in(&data, QIODevice::ReadOnly);
-            
-            int cols, rows;
-            in >> rows >> cols;
-            
-            resize(cols, rows);
-            
-            for (int i = 0; i < cols * rows; ++i)
-                in >> m_cells[i];
         }
-        else if (path.toLower().endsWith(".rle"))
-        {
-            QByteArray data = file.readAll();
-            QTextStream in(&data, QIODevice::ReadOnly);
-            
-            bool header = false;
-            int x = 0, y = 0, count = 1;
-            QString countStr = "";
-            bool endMarker = false;
-            
-            while (!in.atEnd() && !endMarker)
-            {
-                QString line = in.readLine().trimmed();
-                if (line.isEmpty() || line.startsWith('#')) { continue; }
-                
-                if (!header && line.startsWith("x"))
-                {
-                    QString str = line.left(line.indexOf(","));
-                    int cols = str.right(str.size() - str.indexOf("=") - 1).trimmed().toInt();
-                    str = line.right(line.size() - str.size() - 1);
-                    str = str.left(str.indexOf(","));
-                    int rows = str.right(str.size() - str.indexOf("=") - 1).trimmed().toInt();
-                    header = true;
-                    
-                    resize(cols, rows);
-                }
-                else
-                {
-                    for (int i = 0; i < line.size(); ++i)
-                    {
-                        QChar c = line[i];
-                        
-                        if (c == 'b' || c == 'o' || c == '$')
-                        {
-                            if (!countStr.isEmpty())
-                            {
-                                count = countStr.toInt();
-                                countStr = "";
-                            }
-                            for (int j = 0; j < count; ++j)
-                            {
-                                if (c == '$')
-                                {
-                                    for (; x < m_cols; ++x)
-                                        m_cells[y * m_cols + x] = false;
-                                    x = 0;
-                                    ++y;
-                                    if (y >= m_rows)
-                                    {
-                                        i = line.size();
-                                        endMarker = true;
-                                    }
-                                }
-                                else
-                                {
-                                    m_cells[y * m_cols + x] = (c == 'o');
-                                    ++x;
-                                    if (x >= m_cols)
-                                    {
-                                        ++y;
-                                        x = 0;
-                                    }
-                                    if (y >= m_rows)
-                                    {
-                                        i = line.size();
-                                        endMarker = true;
-                                    }
-                                }
-                            }
-                            count = 1;
-                        }
-                        else if (c.isDigit())
-                        {
-                            countStr += c;
-                        }
-                        else if (c == '!')
-                        {
-                            endMarker = true;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+        
+        std::memcpy(m_cells, cells, sizeof(bool) * cols * rows);
         
         m_tickCount = 0;
         emit tickCountSignal(0);
@@ -413,15 +316,32 @@ void GOLScene::load(const QString& path)
         emit colsSignal(m_cols);
         
         update();
+    }
+}
+
+void GOLScene::insert(bool* cells, int x, int y, int cols, int rows)
+{
+    std::lock_guard<std::mutex> guard(m_cellsMutex);
+    
+    if (cells)
+    {
+        if (x + cols > m_cols || y + rows > m_rows)
+            setSize(std::max(m_cols, x + cols), std::max(m_rows, y + rows), false);
         
-        file.close();
+        for (int i = 0; i < rows; ++i)
+            for (int j = 0; j < cols; ++j)
+                m_cells[(i+y) * m_cols + x+j] = cells[i * cols + j];
+        
+        update();
     }
 }
 
 
-void GOLScene::setSize(int cols, int rows)
+void GOLScene::setSize(int cols, int rows, bool lock)
 {
-    std::lock_guard<std::mutex> guard(m_cellsMutex);
+    std::shared_ptr<std::lock_guard<std::mutex>> guard;
+    if (lock)
+        guard.reset(new std::lock_guard<std::mutex>(m_cellsMutex));
     
     if (cols == m_cols && rows == m_rows) { return; }
     
@@ -453,6 +373,9 @@ void GOLScene::setSize(int cols, int rows)
     
     m_cols = cols;
     m_rows = rows;
+    
+    colsSignal(cols);
+    rowsSignal(rows);
     
     update();
 }
@@ -530,4 +453,161 @@ void GOLScene::setCells(bool* cells, int cols, int rows)
         m_cols = cols;
         m_rows = rows;
     }
+}
+
+
+bool* GOLScene::loadFile(const QString& path, int& cols, int& rows)
+{
+    bool* cells = NULL;
+    
+    QFile file(path);
+    if (file.open(QFile::ReadOnly))
+    {
+        if (path.toLower().endsWith(".gol"))
+        {
+            QByteArray data = file.readAll();
+            QDataStream in(&data, QIODevice::ReadOnly);
+            
+            in >> rows >> cols;
+            
+            cells = new bool[cols * rows];
+            
+            for (int i = 0; i < cols * rows; ++i)
+                in >> cells[i];
+        }
+        else if (path.toLower().endsWith(".rle"))
+        {
+            QByteArray data = file.readAll();
+            QTextStream in(&data, QIODevice::ReadOnly);
+            
+            bool header = false;
+            int x = 0, y = 0, count = 1;
+            QString countStr = "";
+            bool endMarker = false;
+            
+            while (!in.atEnd() && !endMarker)
+            {
+                QString line = in.readLine().trimmed();
+                if (line.isEmpty() || line.startsWith('#')) { continue; }
+                
+                if (!header && line.startsWith("x"))
+                {
+                    QString str = line.left(line.indexOf(","));
+                    cols = str.right(str.size() - str.indexOf("=") - 1).trimmed().toInt();
+                    str = line.right(line.size() - str.size() - 1);
+                    str = str.left(str.indexOf(","));
+                    rows = str.right(str.size() - str.indexOf("=") - 1).trimmed().toInt();
+                    header = true;
+                    
+                    cells = new bool[cols * rows];
+                    memset(cells, false, sizeof(bool)*cols*rows);
+                }
+                else
+                {
+                    for (int i = 0; i < line.size(); ++i)
+                    {
+                        QChar c = line[i];
+                        
+                        if (c == 'b' || c == 'o' || c == '$')
+                        {
+                            if (!countStr.isEmpty())
+                            {
+                                count = countStr.toInt();
+                                countStr = "";
+                            }
+                            for (int j = 0; j < count; ++j)
+                            {
+                                if (c == '$')
+                                {
+                                    x = 0;
+                                    ++y;
+                                    if (y >= rows)
+                                    {
+                                        i = line.size();
+                                        endMarker = true;
+                                    }
+                                }
+                                else
+                                {
+                                    if (x >= cols)
+                                    {
+                                        ++y;
+                                        x = 0;
+                                    }
+                                    cells[y * cols + x] = (c == 'o');
+                                    ++x;
+                                    if (y >= rows)
+                                    {
+                                        i = line.size();
+                                        endMarker = true;
+                                    }
+                                }
+                            }
+                            count = 1;
+                        }
+                        else if (c.isDigit())
+                        {
+                            countStr += c;
+                        }
+                        else if (c == '!')
+                        {
+                            endMarker = true;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        
+        file.close();
+    }
+    
+    return cells;
+}
+
+
+bool* GOLScene::rotateCells(bool* cells, int& cols, int& rows, int rotation)
+{
+    rotation = rotation % 4;
+    if (rotation <= 0) { return cells; }
+    
+    int ncols = cols, nrows = rows;
+    
+    if (rotation == 1 || rotation == 3)
+    {
+        ncols = rows; nrows = cols;
+    }
+    
+    bool* ncells = new bool[ncols * nrows];
+    
+    auto f = [&](int x, int y) -> int
+    {
+        int nx, ny;
+        
+        if (rotation == 1)
+        {
+            nx = ncols - y - 1;
+            ny = x;
+        }
+        else if (rotation == 2)
+        {
+            nx = ncols - x - 1;
+            ny = nrows - y - 1;
+        }
+        else if (rotation == 3)
+        {
+            nx = y;
+            ny = nrows - x - 1;
+        }
+        
+        return ny * ncols + nx;
+    };
+    
+    for (int y = 0; y < rows; ++y)
+        for (int x = 0; x < cols; ++x)
+            ncells[f(x,y)] = cells[y * cols + x];
+    
+    rows = nrows;
+    cols = ncols;
+    return ncells;
 }

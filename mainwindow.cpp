@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 #include "golscene.h"
 #include "renderdialog.h"
+#include "insertdialog.h"
 
 #include <QAction>
 #include <QApplication>
@@ -58,6 +59,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui.LoadButton, SIGNAL(pressed()), this, SLOT(loadPressed()));
     connect(ui.SaveButton, SIGNAL(pressed()), this, SLOT(savePressed()));
     connect(ui.ChaosButton, SIGNAL(pressed()), this, SLOT(chaosPressed()));
+    connect(ui.InsertButton, SIGNAL(pressed()), this, SLOT(insertPressed()));
     
     connect(ui.fpsSpinbox, SIGNAL(valueChanged(int)), m_scene, SLOT(fpsChanged(int)));
     connect(ui.CellSizeSpin, SIGNAL(valueChanged(int)), this, SLOT(cellSizeChanged(int)));
@@ -124,6 +126,28 @@ void MainWindow::resetPressed()
 
 void MainWindow::loadPressed()
 {
+    QString fileName = openFile();
+    
+    if (!fileName.isEmpty())
+    {
+        QFileInfo file(fileName);
+        m_scene->load(file.absoluteFilePath());
+    }
+}
+
+void MainWindow::insertPressed()
+{
+    QString fileName = openFile();
+    
+    if (!fileName.isEmpty())
+    {
+        InsertDialog dialog(fileName, m_scene, this);
+        dialog.exec();
+    }
+}
+
+QString MainWindow::openFile()
+{
     QString supported = "Supported (*.gol *.rle)";
     
     QString fileName = QFileDialog::getOpenFileName(this, "Load State", 
@@ -136,9 +160,9 @@ void MainWindow::loadPressed()
         
         m_lastDir = file.absoluteDir().absolutePath();
         m_lastFile = file.fileName();
-        
-        m_scene->load(file.absoluteFilePath());
     }
+    
+    return fileName;
 }
 
 void MainWindow::savePressed()

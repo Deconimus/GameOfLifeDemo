@@ -53,12 +53,16 @@ public:
     void reset();
     void save(const QString& path);
     void load(const QString& path);
+    void insert(bool* cells, int x, int y, int cols, int rows);
+    
+    static bool* loadFile(const QString& path, int& cols, int& rows);
+    static bool* rotateCells(bool* cells, int& cols, int& rows, int rotation);
     
     int rows() { return m_rows; }
     void setRows(int rows) { setSize(m_cols, rows); }
     int columns() { return m_cols; }
     void setColumns(int cols) { setSize(cols, m_rows); }
-    void setSize(int cols, int rows);
+    void setSize(int cols, int rows, bool lock = true);
     
     void chaos();
     
